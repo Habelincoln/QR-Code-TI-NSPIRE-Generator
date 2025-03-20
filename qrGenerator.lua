@@ -1,3 +1,172 @@
+screen = platform.window
+answer = ""
+cursor_pos = 1 -- Tracks the cursor position (1-based index)
+scroll_offset = 0 -- Controls the horizontal scrolling of the text
+showQRCode = false
+
+-- Function to handle character input
+function on.charIn(char)
+    -- Insert the character at the cursor position
+    answer = answer:sub(1, cursor_pos - 1) .. char .. answer:sub(cursor_pos)
+    cursor_pos = cursor_pos + 1 -- Move the cursor forward
+
+    -- Check if the cursor has moved beyond the visible area and scroll
+    local max_visible_chars = math.floor(screen:width() / 8) - 13
+    if cursor_pos - scroll_offset > max_visible_chars then
+        scroll_offset = cursor_pos - max_visible_chars
+    end
+
+    screen:invalidate() -- Refresh the screen
+end
+
+-- Function to handle the backspace key
+function on.backspaceKey()
+    if cursor_pos > 1 then
+        -- Delete the character before the cursor
+        answer = answer:sub(1, cursor_pos - 2) .. answer:sub(cursor_pos)
+        cursor_pos = cursor_pos - 1 -- Move the cursor backward
+
+        -- Check if we need to adjust the scroll position
+        if cursor_pos < scroll_offset + 1 then
+            scroll_offset = cursor_pos - 1 -- Scroll left if needed
+        end
+    end
+    screen:invalidate() -- Refresh the screen
+end
+
+-- Function to handle the Enter key
+function on.enterKey()
+    if answer ~= "" then -- Only generate QR code if the answer string is not blank
+        -- Generate the QR code using the input text
+        generateQRCode(answer)
+        -- Reset the input text and cursor
+        answer = ""
+        cursor_pos = 1
+        scroll_offset = 0
+        screen:invalidate() -- Refresh the screen
+    end
+end
+
+function on.escapeKey()
+    showQRCode = false
+    answer = ""
+    cursor_pos = 1
+    scroll_offset = 0
+    platform.window:invalidate() -- Refresh the screen
+end
+
+-- Function to handle arrow keys for cursor movement
+function on.arrowKey(key)
+    local max_visible_chars = math.floor(screen:width() / 8) - 13
+
+    if key == "left" then
+        if cursor_pos > 1 then
+            cursor_pos = cursor_pos - 1 -- Move the cursor left
+            -- Scroll left if the cursor moves past the visible area
+            if cursor_pos < scroll_offset + 1 then
+                scroll_offset = cursor_pos - 1 -- Adjust scroll_offset to make sure we don't scroll past the start
+            end
+        end
+    elseif key == "right" then
+        if cursor_pos <= #answer then
+            cursor_pos = cursor_pos + 1 -- Move the cursor right
+            -- Scroll right if the cursor moves past the visible area
+            if cursor_pos - scroll_offset > max_visible_chars then
+                scroll_offset = cursor_pos - max_visible_chars
+            end
+        end
+    end
+
+    -- Prevent overscrolling to the left beyond the start of the string
+    if scroll_offset < 0 then
+        scroll_offset = 0
+    end
+
+    screen:invalidate() -- Refresh the screen
+end
+
+-- Function to draw the text and cursor
+function on.paint(gc)
+    -- Clear the screen with a white background
+    gc:setColorRGB(255, 255, 255)
+    gc:fillRect(0, 0, platform.window:width(), platform.window:height())
+
+    if showQRCode then
+        -- Draw the QR code
+        if qrSize == 0 then
+            return -- QR code not generated yet
+        end
+
+        -- Calculate maximum integer cell size to fit the QR code
+        local screenWidth = platform.window:width()
+        local screenHeight = platform.window:height()
+        local maxSize = math.min(screenWidth, screenHeight)
+
+        -- Reduce the cell size to make the QR code smaller
+        local cellSize = math.max(1, math.floor(maxSize / (qrSize + 4))) -- Add 4 to create a border
+        local qrWidth = cellSize * qrSize
+
+        -- Calculate starting position to align the QR code to the left with equal top/bottom margins
+        local verticalMargin = (screenHeight - qrWidth) / 2
+        local startX = verticalMargin -- Left margin equals top/bottom margins
+        local startY = verticalMargin -- Top margin
+
+        -- Draw each module of the QR code
+        gc:setColorRGB(0, 0, 0) -- Black color for modules
+        for row = 1, qrSize do
+            for col = 1, qrSize do
+                if qrMatrix[row][col] == 1 then
+                    gc:fillRect(startX + (col-1)*cellSize, startY + (row-1)*cellSize, cellSize, cellSize)
+                end
+            end
+        end
+
+        -- Add credits
+        gc:setColorRGB(0, 0, 0) -- Black text for credits
+        gc:setFont("sansserif", "r", 12) -- Font size reduced to half (from 14 to 7)
+
+        local text0 = "Credits:"
+        local text0X = startX + qrWidth + 20 -- 20 pixels to the right of the QR code
+        local text0Y = startY + 50 -- Slightly more distance from the top (30 pixels)
+        gc:drawString(text0, text0X, text0Y, "top")
+
+        gc:setFont("sansserif", "r", 8) -- Font size reduced to half (from 14 to 7)
+
+
+        -- Position the first string to the right of the QR code, centered in the white area, with slightly more distance from the top
+        local text1 = "GitHub: @Habelincoln"
+        local text1X = startX + qrWidth + 20 -- 20 pixels to the right of the QR code
+        local text1Y = startY + 75 -- Slightly more distance from the top (30 pixels)
+        gc:drawString(text1, text1X, text1Y, "top")
+
+        -- Position the second string below the first, aligned with the bottom of the QR code but raised slightly (smaller offset than the top string)
+        local text2 = "GitHub: @AShor6"
+        local text2X = text1X -- Align horizontally with the first string
+        local text2Y = startY + qrWidth - 65 -- Raised slightly (20 pixels above the bottom of the QR code)
+        gc:drawString(text2, text2X, text2Y, "top")
+    else
+        -- Draw the text input interface
+        gc:setColorRGB(0, 0, 0) -- Black text
+        gc:setFont("sansserif", "r", 12) -- Font settings
+
+        -- Draw the text starting from scroll_offset
+        local visible_text = answer:sub(scroll_offset + 1)
+        gc:drawString("Enter Text: " .. visible_text, 5, 5, "top")
+
+        -- Draw the cursor
+        local cursor_x = 5 + gc:getStringWidth("Enter Text: " .. visible_text:sub(1, cursor_pos - scroll_offset - 1))
+        gc:setColorRGB(0, 0, 0) -- Black cursor
+        gc:drawLine(cursor_x, 5, cursor_x, 20) -- Vertical line for the cursor
+    end
+end
+
+function generateQRCode(inputText)
+    showQRCode = true
+    platform.window:invalidate()
+    local ECLevel = "H" -- Default error correction level (can be changed)
+    main(inputText) -- Call the main QR code generation function with the input text
+end
+
 encodedData = ""
 byteCapacity = 0
 totalDataCodewords = 0
@@ -69,9 +238,8 @@ local ecTable = {
     {2956, 30, 19, 118, 6, 119}, {2334, 28, 18, 47, 31, 48}, {1666, 30, 34, 24, 34, 25}, {1276, 30, 20, 15, 61, 16}
 }
 
-function main()
+function main(input)
 
-    local input = "Hello World! How are you today? How are you feeling? You doing alright? Good! I'm glad."
     local ECLevel = "H" --L,M,Q,H
 
     if ECLevel == "L" then
@@ -131,7 +299,7 @@ function main()
     -- Step 5: Interleave data and error correction codewords into the final message
     local finalMessage = interleaveBlocks(dataBlocks, eccBlocks)
     finalMessage = finalMessage .. getRemainderBits(version)
-   
+
     print(finalMessage)
     print(version)
     print(byteCapacity)
@@ -141,7 +309,7 @@ function main()
     print(dataCodewordsGroup1)
     print(numBlocksGroup2)
     print(dataCodewordsGroup2)
-   
+
     --MatrixBuilder(finalMessage, version, ecLevel)
     local matrixBuilder = MatrixBuilder:new(finalMessage, version, ecLevel)
     -- print("\nQR Code saved as qrcode.html")
@@ -502,40 +670,6 @@ local versionFormats = {
 qrMatrix = {}
 qrSize = 0
 
-function on.create()
-    main() -- Generate the QR code matrix
-    platform.window:invalidate() -- Refresh the screen to draw
-end
-
-function on.paint(gc)
-    -- Clear the screen with white background
-    gc:setColorRGB(255, 255, 255)
-    gc:fillRect(0, 0, platform.window:width(), platform.window:height())
-    
-    if qrSize == 0 then
-        return -- QR code not generated yet
-    end
-    
-    -- Calculate cell size to fit the QR code on the screen
-    local screenWidth = platform.window:width()
-    local screenHeight = platform.window:height()
-    local cellSize = math.min(screenWidth / qrSize, screenHeight / qrSize)
-    
-    -- Calculate starting position to center the QR code
-    local startX = (screenWidth - cellSize * qrSize) / 2
-    local startY = (screenHeight - cellSize * qrSize) / 2
-    
-    -- Draw each module of the QR code
-    gc:setColorRGB(0, 0, 0) -- Black color for modules
-    for row = 1, qrSize do
-        for col = 1, qrSize do
-            if qrMatrix[row][col] == 1 then
-                gc:fillRect(startX + (col-1)*cellSize, startY + (row-1)*cellSize, cellSize, cellSize)
-            end
-        end
-    end
-end
-
 function MatrixBuilder:new(text, versionInput, ecLevel)
     local self = setmetatable({}, MatrixBuilder)
     self.message = text
@@ -571,9 +705,9 @@ function MatrixBuilder:__init(text, versionInput, ecLevel)
     for i = 0, 7 do
         -- Reset only the mask type, not the entire matrix
         self.maskType = i
-       
-       
-       
+    
+    
+    
         self.matrix = {}
     self.filled = {}
     for i = 1, self.printSize do
@@ -584,8 +718,8 @@ function MatrixBuilder:__init(text, versionInput, ecLevel)
             self.filled[i][j] = false
         end
     end
-       
-       
+    
+    
 
         self:addFinderPatterns()
         self:addSeparators()
@@ -609,12 +743,12 @@ function MatrixBuilder:__init(text, versionInput, ecLevel)
 
     -- Reset only the mask type for the final selected mask
     self.maskType = lowestScore
-   
+
     self.maskType = 0
     print(self.maskType)
-   
-   
-   
+
+
+
     self.matrix = {}
     self.filled = {}
     for i = 1, self.printSize do
@@ -625,11 +759,11 @@ function MatrixBuilder:__init(text, versionInput, ecLevel)
             self.filled[i][j] = false
         end
     end
-   
-   
-   
-   
-   
+
+
+
+
+
 
     self:addFinderPatterns()
     self:addSeparators()
@@ -826,7 +960,7 @@ function MatrixBuilder:addReservedAreas(version, size)
 
     -- Mark the intersection of the separators
     self.filled[8][8] = true
-   
+
     -- For versions greater than 7, mark the reserved areas for version information
     if version > 7 then
         -- Mark the bottom-left reserved area
@@ -835,7 +969,7 @@ function MatrixBuilder:addReservedAreas(version, size)
                 self.filled[i][j] = true
             end
         end
-       
+    
         -- Mark the top-right reserved area
         for i = 1, 6 do -- Adjusted for 1-based indexing
             for j = size - 10, size - 8 do -- Adjusted for 1-based indexing
@@ -982,18 +1116,18 @@ function MatrixBuilder:fill(startRow, startCol, startIndex, startUp, maxBits)
 end
 
 function MatrixBuilder:PlaceLastBit(size, bit, version)
-  if version >= 7 then
+if version >= 7 then
     self:placeBitInPos(size - 11, 1, bit)
     self.filled[size - 11][1] = true
-  else
+else
     self:placeBitInPos(size - 8, 1, bit)
     self.filled[size - 8][1] = true
-  end
+end
 end
 
 function MatrixBuilder:placeBitInPos(row, col, bit)
-  -- print("Row: " .. row .. "Col: " .. col)
-  -- print(self.maskType)
+-- print("Row: " .. row .. "Col: " .. col)
+-- print(self.maskType)
     if self.maskType == 0 then
         if (row + col) % 2 == 0 then
             if bit == 1 then
@@ -1162,7 +1296,7 @@ function MatrixBuilder:addMaskAndECInfo(ecLevel, maskType, size)
 
     if ecLevel == 3 then
         if maskType == 0 then
-         
+        
             formatString = formatInfo3[1]
             print("format string:" .. formatString)
         elseif maskType == 1 then
@@ -1216,7 +1350,7 @@ function MatrixBuilder:addMaskAndECInfo(ecLevel, maskType, size)
     self.matrix[size - 4][9] = tonumber(formatString:sub(5, 5))
     self.matrix[size - 5][9] = tonumber(formatString:sub(6, 6))
     self.matrix[size - 6][9] = tonumber(formatString:sub(7, 7))
-   
+
     self.matrix[9][size - 7] = tonumber(formatString:sub(8, 8))
     self.matrix[9][size - 6] = tonumber(formatString:sub(9, 9))
     self.matrix[9][size - 5] = tonumber(formatString:sub(10, 10))
@@ -1322,8 +1456,8 @@ function evaluateCondition2(matrix)
         for col = 1, #matrix[1] - 1 do
             -- Check if the current 2x2 block has the same color
             if matrix[row][col] == matrix[row][col + 1] and
-               matrix[row][col] == matrix[row + 1][col] and
-               matrix[row][col] == matrix[row + 1][col + 1] then
+            matrix[row][col] == matrix[row + 1][col] and
+            matrix[row][col] == matrix[row + 1][col + 1] then
                 penalty = penalty + 3 -- Add penalty for each 2x2 block
             end
         end
@@ -1415,4 +1549,8 @@ function calculatePenalty(maskedMatrix)
     return (evaluateCondition1(maskedMatrix) + evaluateCondition2(maskedMatrix) + evaluateCondition3(maskedMatrix) + evaluateCondition4(maskedMatrix))
 end
 
--- main()
+-- Initialization function
+function on.create()
+    platform.window:invalidate()
+    screen:invalidate() -- Trigger the first paint event
+end
