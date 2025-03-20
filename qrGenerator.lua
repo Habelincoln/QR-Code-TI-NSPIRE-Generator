@@ -109,7 +109,7 @@ function on.paint(gc)
         -- Calculate starting position to align the QR code to the left with equal top/bottom margins
         local verticalMargin = (screenHeight - qrWidth) / 2
         local startX = verticalMargin -- Left margin equals top/bottom margins
-        local startY = verticalMargin -- Top margin
+        local startY = verticalMargin - 5 -- Top margin
 
         -- Draw each module of the QR code
         gc:setColorRGB(0, 0, 0) -- Black color for modules
@@ -126,7 +126,7 @@ function on.paint(gc)
         gc:setFont("sansserif", "r", 12) -- Font size reduced to half (from 14 to 7)
 
         local text0 = "Credits:"
-        local text0X = startX + qrWidth + 15 -- 20 pixels to the right of the QR code
+        local text0X = 200 -- 20 pixels to the right of the QR code
         local text0Y = startY + 50 -- Slightly more distance from the top (30 pixels)
         gc:drawString(text0, text0X, text0Y, "top")
 
@@ -134,7 +134,7 @@ function on.paint(gc)
 
         -- Position the first string to the right of the QR code, centered in the white area, with slightly more distance from the top
         local text1 = "GitHub: @Habelincoln"
-        local text1X = startX + qrWidth + 15 -- 20 pixels to the right of the QR code
+        local text1X = 200 -- 20 pixels to the right of the QR code
         local text1Y = startY + 80 -- Slightly more distance from the top (30 pixels)
         gc:drawString(text1, text1X, text1Y, "top")
 
@@ -143,6 +143,14 @@ function on.paint(gc)
         local text2X = text1X -- Align horizontally with the first string
         local text2Y = startY + qrWidth - 70 -- Raised slightly (20 pixels above the bottom of the QR code)
         gc:drawString(text2, text2X, text2Y, "top")
+
+        gc:setFont("sansserif", "r", 10)
+
+        local text3 = "https://github.com/Habelincoln/QR-Code-TI-NSPIRE-Generator"
+        local text3X = 2
+        local text3Y = 190
+        gc:drawString(text3, text3X, text3Y, "top")
+
     else
         -- Draw the text input interface
         gc:setColorRGB(0, 0, 0) -- Black text
