@@ -87,74 +87,55 @@ end
 
 -- Function to draw the text and cursor
 function on.paint(gc)
-    -- Clear the screen with a white background
+    -- Clear the screen with white
     gc:setColorRGB(255, 255, 255)
     gc:fillRect(0, 0, platform.window:width(), platform.window:height())
 
     if showQRCode then
-        -- Draw the QR code
-        if qrSize == 0 then
-            return -- QR code not generated yet
-        end
+        if qrSize == 0 then return end
 
-        -- Calculate maximum integer cell size to fit the QR code
-        local screenWidth = platform.window:width()
-        local screenHeight = platform.window:height()
-        local maxSize = math.min(screenWidth, screenHeight)
+        -- Fixed display settings (ADJUST THESE)
+        local targetQRWidth = 190   -- Desired width/height of QR on screen
+        local targetQRHeight = 190
+        local qrMargin = 5          -- Base margin from top-left corner
 
-        -- Reduce the cell size to make the QR code smaller
-        local cellSize = math.max(1, math.floor(maxSize / (qrSize + 4))) -- Add 4 to create a border
-        local qrWidth = cellSize * qrSize
+        -- Calculate integer cell size (floor to avoid anti-aliasing)
+        local cellSize = math.max(1, math.floor(targetQRWidth / qrSize))
+        local qrDisplayWidth = cellSize * qrSize
+        local qrDisplayHeight = cellSize * qrSize
 
-        -- Calculate starting position to align the QR code to the left with equal top/bottom margins
-        local verticalMargin = (screenHeight - qrWidth) / 2
-        local startX = verticalMargin -- Left margin equals top/bottom margins
-        local startY = verticalMargin - 5 -- Top margin
+        -- Center QR within target area, allowing overflow into margins if needed
+        local startX = qrMargin + (targetQRWidth - qrDisplayWidth) / 2
+        local startY = qrMargin + (targetQRHeight - qrDisplayHeight) / 2
 
-        -- Draw each module of the QR code
-        gc:setColorRGB(0, 0, 0) -- Black color for modules
+        -- Draw QR modules
+        gc:setColorRGB(0, 0, 0)
         for row = 1, qrSize do
             for col = 1, qrSize do
                 if qrMatrix[row][col] == 1 then
-                    gc:fillRect(startX + (col-1)*cellSize, startY + (row-1)*cellSize, cellSize, cellSize)
+                    gc:fillRect(
+                        startX + (col-1)*cellSize,
+                        startY + (row-1)*cellSize,
+                        cellSize,
+                        cellSize
+                    )
                 end
             end
         end
 
-        -- Add credits
-        gc:setColorRGB(0, 0, 0) -- Black text for credits
-        gc:setFont("sansserif", "r", 12) -- Font size reduced to half (from 14 to 7)
-
-        local text0 = "Credits:"
-        local text0X = 200 -- 20 pixels to the right of the QR code
-        local text0Y = startY + 50 -- Slightly more distance from the top (30 pixels)
-        gc:drawString(text0, text0X, text0Y, "top")
-
-        gc:setFont("sansserif", "r", 8) -- Font size reduced to half (from 14 to 7)
-
-        -- Position the first string to the right of the QR code, centered in the white area, with slightly more distance from the top
-        local text1 = "GitHub: @Habelincoln"
-        local text1X = 200 -- 20 pixels to the right of the QR code
-        local text1Y = startY + 80 -- Slightly more distance from the top (30 pixels)
-        gc:drawString(text1, text1X, text1Y, "top")
-
-        -- Position the second string below the first, aligned with the bottom of the QR code but raised slightly (smaller offset than the top string)
-        local text2 = "GitHub: @AShor6"
-        local text2X = text1X -- Align horizontally with the first string
-        local text2Y = startY + qrWidth - 70 -- Raised slightly (20 pixels above the bottom of the QR code)
-        gc:drawString(text2, text2X, text2Y, "top")
-
+        -- Credits at fixed positions (ADJUST COORDINATES AS NEEDED)
+        gc:setFont("sansserif", "r", 12)
+        gc:drawString("Credits:", 205, 60, "top")  -- Static position
+        gc:setFont("sansserif", "r", 8)
+        gc:drawString("GitHub: @Habelincoln", 205, 90, "top")
+        gc:drawString("GitHub: @AShor6", 205, 110, "top")
         gc:setFont("sansserif", "r", 10)
-
-        local text3 = "https://github.com/Habelincoln/QR-Code-TI-NSPIRE-Generator"
-        local text3X = 2
-        local text3Y = 190
-        gc:drawString(text3, text3X, text3Y, "top")
+        gc:drawString("https://github.com/Habelincoln/QR-Code-TI-NSPIRE-Generator", 2, 193, "top")
 
     else
         -- Draw the text input interface
-        gc:setColorRGB(0, 0, 0) -- Black text
-        gc:setFont("sansserif", "r", 12) -- Font settings
+        gc:setColorRGB(0, 0, 0)
+        gc:setFont("sansserif", "r", 12)
 
         -- Draw the text starting from scroll_offset
         local visible_text = answer:sub(scroll_offset + 1)
@@ -162,8 +143,8 @@ function on.paint(gc)
 
         -- Draw the cursor
         local cursor_x = 5 + gc:getStringWidth("Enter Text: " .. visible_text:sub(1, cursor_pos - scroll_offset - 1))
-        gc:setColorRGB(0, 0, 0) -- Black cursor
-        gc:drawLine(cursor_x, 5, cursor_x, 20) -- Vertical line for the cursor
+        gc:setColorRGB(0, 0, 0)
+        gc:drawLine(cursor_x, 5, cursor_x, 20)
     end
 end
 
