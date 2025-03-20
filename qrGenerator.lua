@@ -95,18 +95,25 @@ function on.paint(gc)
         if qrSize == 0 then return end
 
         -- Fixed display settings (ADJUST THESE)
-        local targetQRWidth = 190   -- Desired width/height of QR on screen
-        local targetQRHeight = 190
-        local qrMargin = 5          -- Base margin from top-left corner
+        local fixedQRWidth = 180   -- QR code MUST fill this area
+        local fixedQRHeight = 180
+        local qrMargin = 5 -- Base margin (only used if QR is smaller than fixed area)
 
-        -- Calculate integer cell size (floor to avoid anti-aliasing)
-        local cellSize = math.max(1, math.floor(targetQRWidth / qrSize))
+        -- Calculate ideal cell size to fill the fixed area
+        local cellSizeFloat = fixedQRWidth / qrSize
+        -- Prioritize CEIL to avoid shrinking (overflow into margins is allowed)
+        local cellSize = math.floor(cellSizeFloat)
+        -- Ensure cellSize is at least 1
+        cellSize = math.max(1, cellSize)
+
+        -- Calculate actual QR dimensions (may exceed fixed area)
         local qrDisplayWidth = cellSize * qrSize
         local qrDisplayHeight = cellSize * qrSize
 
-        -- Center QR within target area, allowing overflow into margins if needed
-        local startX = qrMargin + (targetQRWidth - qrDisplayWidth) / 2
-        local startY = qrMargin + (targetQRHeight - qrDisplayHeight) / 2
+        -- Center the QR code in the fixed area
+        -- (If QR is larger than fixed area, it will overflow symmetrically)
+        local startX = qrMargin + (fixedQRWidth - qrDisplayWidth) / 2
+        local startY = qrMargin + (fixedQRHeight - qrDisplayHeight) / 2
 
         -- Draw QR modules
         gc:setColorRGB(0, 0, 0)
@@ -123,29 +130,33 @@ function on.paint(gc)
             end
         end
 
-        -- Credits at fixed positions (ADJUST COORDINATES AS NEEDED)
+        -- Credits at fixed positions (ADJUST THESE)
         gc:setFont("sansserif", "r", 12)
-        gc:drawString("Credits:", 205, 60, "top")  -- Static position
+        gc:drawString("Credits:", 200, 50, "top")
         gc:setFont("sansserif", "r", 8)
-        gc:drawString("GitHub: @Habelincoln", 205, 90, "top")
-        gc:drawString("GitHub: @AShor6", 205, 110, "top")
+        gc:drawString("GitHub: @Habelincoln", 200, 80, "top")
+        gc:drawString("GitHub: @AShor6", 200, 100, "top")
         gc:setFont("sansserif", "r", 10)
-        gc:drawString("https://github.com/Habelincoln/QR-Code-TI-NSPIRE-Generator", 2, 193, "top")
+        gc:drawString("https://github.com/Habelincoln/QR-Code-TI-NSPIRE-Generator", 2, 190, "top")
 
     else
-        -- Draw the text input interface
-        gc:setColorRGB(0, 0, 0)
-        gc:setFont("sansserif", "r", 12)
+    -- Draw the text input interface
+    gc:setColorRGB(0, 0, 0)
+    gc:setFont("sansserif", "r", 12)
 
-        -- Draw the text starting from scroll_offset
-        local visible_text = answer:sub(scroll_offset + 1)
-        gc:drawString("Enter Text: " .. visible_text, 5, 5, "top")
+    -- Display the "Enter Text" prompt and the current input
+    local visible_text = answer:sub(scroll_offset + 1)
+    gc:drawString("Enter Text: " .. visible_text, 5, 5, "top")
 
-        -- Draw the cursor
-        local cursor_x = 5 + gc:getStringWidth("Enter Text: " .. visible_text:sub(1, cursor_pos - scroll_offset - 1))
-        gc:setColorRGB(0, 0, 0)
-        gc:drawLine(cursor_x, 5, cursor_x, 20)
-    end
+    -- Draw the cursor
+    local cursor_x = 5 + gc:getStringWidth("Enter Text: " .. visible_text:sub(1, cursor_pos - scroll_offset - 1))
+    gc:setColorRGB(0, 0, 0)
+    gc:drawLine(cursor_x, 5, cursor_x, 20)
+
+    -- Calculate the version based on the length of `answer`
+    setVersion(answer)
+    gc:drawString("Version: " .. version, 5, 25, "top")  -- Display the version below the text input
+end
 end
 
 function generateQRCode(inputText)
@@ -302,8 +313,6 @@ function main(input)
     local matrixBuilder = MatrixBuilder:new(finalMessage, version, ecLevel)
     -- print("\nQR Code saved as qrcode.html")
     
-    -- os.execute("start qrcode.html")
-
     --make image for calculator
     qrMatrix = matrixBuilder.matrix
     qrSize = matrixBuilder.printSize
