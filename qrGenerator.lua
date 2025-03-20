@@ -126,23 +126,22 @@ function on.paint(gc)
         gc:setFont("sansserif", "r", 12) -- Font size reduced to half (from 14 to 7)
 
         local text0 = "Credits:"
-        local text0X = startX + qrWidth + 20 -- 20 pixels to the right of the QR code
+        local text0X = startX + qrWidth + 15 -- 20 pixels to the right of the QR code
         local text0Y = startY + 50 -- Slightly more distance from the top (30 pixels)
         gc:drawString(text0, text0X, text0Y, "top")
 
         gc:setFont("sansserif", "r", 8) -- Font size reduced to half (from 14 to 7)
 
-
         -- Position the first string to the right of the QR code, centered in the white area, with slightly more distance from the top
         local text1 = "GitHub: @Habelincoln"
-        local text1X = startX + qrWidth + 20 -- 20 pixels to the right of the QR code
-        local text1Y = startY + 75 -- Slightly more distance from the top (30 pixels)
+        local text1X = startX + qrWidth + 15 -- 20 pixels to the right of the QR code
+        local text1Y = startY + 80 -- Slightly more distance from the top (30 pixels)
         gc:drawString(text1, text1X, text1Y, "top")
 
         -- Position the second string below the first, aligned with the bottom of the QR code but raised slightly (smaller offset than the top string)
         local text2 = "GitHub: @AShor6"
         local text2X = text1X -- Align horizontally with the first string
-        local text2Y = startY + qrWidth - 65 -- Raised slightly (20 pixels above the bottom of the QR code)
+        local text2Y = startY + qrWidth - 70 -- Raised slightly (20 pixels above the bottom of the QR code)
         gc:drawString(text2, text2X, text2Y, "top")
     else
         -- Draw the text input interface
